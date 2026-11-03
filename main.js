@@ -19,9 +19,13 @@ if (!Number.isInteger(portNumber) || portNumber < 0 || portNumber > 65535) {
   program.error('порт має бути цілим числом від 0 до 65535');
 }
 
-function sendJson(res, statusCode, body) {
+function sendText(res, statusCode, text) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify(body));
+  res.end(text);
+}
+
+function sendJson(res, statusCode, body) {
+  sendText(res, statusCode, JSON.stringify(body));
 }
 
 // Перетворює значення з файлу на число; порожнє, null чи нечислове дає null
@@ -100,7 +104,20 @@ fs.access(input, (err) => {
         return;
       }
 
-      sendJson(res, 200, buildResponse(records, showMfo, onlyNormal));
+      const responseText = JSON.stringify(buildResponse(records, showMfo, onlyNormal));
+
+      if (!output) {
+        sendText(res, 200, responseText);
+        return;
+      }
+
+      fs.writeFile(output, responseText, 'utf8', (writeErr) => {
+        if (writeErr) {
+          sendJson(res, 500, { error: 'Не вдалося записати відповідь у файл' });
+          return;
+        }
+        sendText(res, 200, responseText);
+      });
     });
   });
 
